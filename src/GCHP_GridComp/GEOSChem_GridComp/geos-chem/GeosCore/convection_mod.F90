@@ -1124,7 +1124,8 @@ CONTAINS
                 LOST        = 0e+0_fp
                 MASS_WASH   = 0e+0_fp
                 MASS_NOWASH = 0e+0_fp
-
+                AER         = .TRUE.
+                
                 ! Check if...
                 ! there is precip coming into box (I,J,K) from (I,J,K+1)
                 IF ( PDOWN(K+1)  > 0) THEN
@@ -2012,6 +2013,7 @@ CONTAINS
                 GAINED      = 0e+0_fp
                 WETLOSS     = 0e+0_fp
                 MASS_WASH   = 0e+0_fp
+                KIN         = .TRUE.
 
                 ! Precipitation from upper edge is essential for both
                 ! washout and reevaporation
