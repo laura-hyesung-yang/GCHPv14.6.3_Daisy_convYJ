@@ -1708,6 +1708,7 @@ CONTAINS
 #endif
 #ifdef LUO_WETDEP
     REAL(f8)               :: Hplus, HCSO2, HCNH3, Ks1, Ks2, T_Term
+    REAL(fp)               :: WASHRATE
 #endif
 
     ! Strings
