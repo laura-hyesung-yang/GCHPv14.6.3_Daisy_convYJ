@@ -1191,16 +1191,6 @@ CONTAINS
                       !   Factor of 10 in denom for unit conversion
                       !     1000 kg/m3 * 0.01 m/cm = 10 kg/m2/cm
 
-                   ! Define ALPHA, the fraction of raindrops that
-                   ! re-evaporate when falling from (I,J,L+1) to (I,J,L)
-                   ! NOTE:
-                   !   REEVAPCN is in units of [kg/kg/s]
-                   !   Now use BMASS [kg/m2] instead of AD/area to
-                   !   remove area dependency
-                   !   PDOWN is in units of [cm3/cm2/s]
-                   !   Factor of 10 in denom for unit conversion
-                   !     1000 kg/m3 * 0.01 m/cm = 10 kg/m2/cm
-
                       ! %%%% CASE 1 %%%%
                       ! Partial re-evaporation. Less precip is leaving
                       ! the grid box then entered from above (V. Shah, 9/14/15)
@@ -1260,7 +1250,7 @@ CONTAINS
                       ! grid box (I,J,L) that is NOT available for washout.
                       ! Calculate in units of [kg/kg]
                       MASS_NOWASH = ( 1e+0_fp - F_WASHOUT ) * Q(K)
-                      
+
                       ! MASS_WASH is the total amount of non-aerosol species
                       ! that is available for washout in grid box (I,J,L).
                       ! It consists of the mass in the precipitating
