@@ -1253,6 +1253,7 @@ CONTAINS
     REAL(fp)               :: Ki, SO2LOSS
 #ifdef LUO_WETDEP
     REAL(fp)               :: LIQCLD, ICECLD
+    REAL(fp)               :: YCLDICE, FICE, FC, RAINRATE
 #endif
 
     ! Pointers
@@ -1387,6 +1388,16 @@ CONTAINS
         ENDIF
       ENDIF
     ENDIF
+
+    FC=MAX(1.D-4,State_Met%CLDF(I,J,L))
+    IF(RAINFRAC>0.D0)THEN
+      RAINRATE = RAINFRAC/DT/FC
+
+      RAINFRAC = RAINFRAC*(State_Met%KINC(I,J,L)/ &
+                (State_Met%KINC(I,J,L)+ &
+                (1.D0-FC)*RAINRATE))
+    ENDIF
+#endif
     
     ! Free pointer
     p_pHCloud => NULL()

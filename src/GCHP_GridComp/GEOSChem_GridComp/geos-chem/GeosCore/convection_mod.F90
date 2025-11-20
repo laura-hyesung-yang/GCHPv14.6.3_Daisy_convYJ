@@ -1111,8 +1111,10 @@ CONTAINS
           !==================================================================
           ! (4)  B e l o w   C l o u d   B a s e
           !==================================================================
+          
           ! Only for wet deposition species
           IF ( NW > 0 ) THEN
+
              DO K = CLDBASE-1, 1, -1
 
                 ! Initialize
@@ -1125,7 +1127,7 @@ CONTAINS
                 MASS_WASH   = 0e+0_fp
                 MASS_NOWASH = 0e+0_fp
                 AER         = .TRUE.
-                
+
                 ! Check if...
                 ! there is precip coming into box (I,J,K) from (I,J,K+1)
                 IF ( PDOWN(K+1)  > 0) THEN
@@ -1178,10 +1180,12 @@ CONTAINS
 #endif
                    ! Check if the species is an aerosol or not
                    IF ( AER ) THEN
+
                       !---------------------------------------------------------
                       ! Washout of aerosol species
                       ! This is modeled as a kinetic process
                       !---------------------------------------------------------
+
                       ! Define ALPHA, the fraction of raindrops that
                       ! re-evaporate when falling from (I,J,L+1) to (I,J,L)
                       ! NOTE:
@@ -1197,16 +1201,20 @@ CONTAINS
                       ! the grid box then entered from above (V. Shah, 9/14/15)
                       IF ( PDOWN(K+1) > PDOWN(K) .AND. &
                            PDOWN(K)   > TINYNUM        ) THEN
+
                          ! Define ALPHA, the fraction of raindrops that
                          ! re-evaporate when falling from grid box
                          ! (I,J,L+1) to (I,J,L)
                          ALPHA = REEVAPCN(K) * BMASS(K) &
                                  / ( PDOWN(K+1) * 10e+0_fp  )
+
                          ! For safety
                          ALPHA = MIN( ALPHA, 1e+0_fp )
+        
                          ! ALPHA2 is the fraction of the rained-out aerosols
                          ! that gets resuspended in grid box (I,J,L)
                          ALPHA2  = 0.5e+0_fp * ALPHA
+        
                       ENDIF
 
                       ! %%%% CASE 2 %%%%
@@ -1216,6 +1224,7 @@ CONTAINS
                       IF ( PDOWN(K) < TINYNUM ) THEN
                          ALPHA2 = 1e+0_fp
                       ENDIF
+                      
                       ! GAINED is the rained out aerosol coming down from
                       ! grid box (I,J,L+1) that will evaporate and re-enter
                       ! the atmosphere in the gas phase in grid box (I,J,L)
@@ -1241,7 +1250,9 @@ CONTAINS
                       ! species that will be passed to the grid box below
                       ! [kg/m2/timestep]
                       T0_SUM = T0_SUM + WETLOSS
+
                    ELSE
+
                       !---------------------------------------------------------
                       ! Washout of non-aerosol species
                       ! This is modeled as an equilibrium process
@@ -1277,6 +1288,7 @@ CONTAINS
                       ! that will be passed to the grid box below
                       ! [kg species/m2/timestep]
                       T0_SUM      = T0_SUM + WETLOSS
+
                    ENDIF
 
                    !------------------------------------------------------------
@@ -1930,6 +1942,7 @@ CONTAINS
                 !------------------------------------------------------------
                 IF ( USE_DIAG38 .and. NW > 0 ) THEN
                    DIAG38(K,NW) = DIAG38(K,NW) + ( T0 * AREA_M2 / DNS )
+
 #ifdef DEBUG
                    ! check for infinity (added by hma, 20101117)
                    IF ( .not. IT_IS_FINITE( DIAG38(K,NW) ) ) THEN
@@ -2074,6 +2087,7 @@ CONTAINS
                    ! and HNO3) and equilibrium species (Gases), cf Jacob 2000
                    !=========================================================
                    IF ( KIN ) THEN
+
                       !------------------------------------------------------
                       ! This is modeled as a kinetic process
                       !------------------------------------------------------
