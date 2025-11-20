@@ -1,0 +1,9 @@
+module gFTL2_Unlimited@Container@
+
+#define T __UNLIMITED_POLYMORPHIC
+#define @Container@ Unlimited@Container@
+#include "@container@/template.inc"
+#undef @Container@
+#undef T
+  
+end module gFTL2_Unlimited@Container@

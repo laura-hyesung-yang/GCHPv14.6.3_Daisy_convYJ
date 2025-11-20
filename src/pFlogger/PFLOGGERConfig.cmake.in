@@ -1,0 +1,11 @@
+# Package configuration file
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+find_dependency(GFTL)
+find_dependency(GFTL_SHARED)
+find_dependency(YAFYAML)
+
+include ("${CMAKE_CURRENT_LIST_DIR}/PFLOGGERTargets.cmake")
+
+

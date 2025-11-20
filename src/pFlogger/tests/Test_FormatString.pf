@@ -1,0 +1,289 @@
+module Test_FormatString
+   use funit
+   use PFL_FormatString
+   use PFL_ArgListUtilities
+   use gftl2_UnlimitedVector
+   use PFL_FormatToken, only: EOT
+   use gftl2_StringUnlimitedMap
+   use yaFyaml, only: String
+   implicit none
+
+contains
+
+
+@test
+   subroutine test_format_vector()
+      character(len=:), allocatable :: expected
+      character(len=:), allocatable :: found
+
+      found = FormatString('x',  make_arg_vector())
+      expected = 'x'
+      @assertEqual(expected, found, whitespace=KEEP_ALL)
+
+      found = formatString('i %i3.3', make_arg_vector(9))
+      expected = 'i 009'
+      @assertEqual(expected, found)
+
+      found = formatString('x=%f4.2~.', make_arg_vector(1.23))
+      expected ='x=1.23.'
+      @assertEqual(expected, found)
+
+   end subroutine test_format_vector
+
+
+@test
+   subroutine test_format_vector_tooFewArgs()
+      character(len=:), allocatable :: found
+
+      found = formatString('i %i3.3 %i2.2', make_arg_vector(1))
+      @assertExceptionRaised('format_vector() - not enough position arguments for format string.')
+
+   end subroutine test_format_vector_tooFewArgs
+
+@test
+   subroutine test_format_vector_tooManyArgs()
+      character(len=:), allocatable :: found
+
+      found = formatString('i %i3.3', make_arg_vector(1,2))
+      @assertExceptionRaised('format_vector() - additional unprocessed arguments.')
+      
+   end subroutine test_format_vector_tooManyArgs
+
+@test
+   subroutine test_format_map()
+      type (StringUnlimitedMap) :: extra
+      character(len=:), allocatable :: expected
+      character(len=:), allocatable :: found
+
+      call extra%insert('i',1)
+      call extra%insert('x',1.234)
+      call extra%insert('f',.false.)
+      call extra%insert('s',String('word'))
+
+      found = formatString('i=%(i)i2 f=%(f)l2 s=%(s)a x=%(x)f6.2', extra)
+      expected = 'i= 1 f= F s=word x=  1.23'
+      @assertEqual(expected, found)
+
+   end subroutine test_format_map
+
+@test
+   subroutine test_format_map_missingKey()
+      type (StringUnlimitedMap) :: extra
+      character(len=:), allocatable :: found
+
+      call extra%insert('i',1)
+
+      found = formatString('i=%(i)i2 f=%(f)*', extra)
+      call assertExceptionRaised('format_preparsed() - no such keyword: <f> in "extra".', &
+           & location=SourceLocation(__FILE__,__LINE__))
+      call assertExceptionRaised('', location=SourceLocation(__FILE__,__LINE__))
+
+   end subroutine test_format_map_missingKey
+
+@test
+   subroutine test_format_map_illegalPositionToken()
+      type (StringUnlimitedMap) :: extra
+      character(len=:), allocatable :: found
+
+      call extra%insert('i',1)
+
+      found = formatString('i=%(i)i2 %i', extra)
+      call assertExceptionRaised('format_map() - position arguments not allowed.', &
+           & location=SourceLocation(__FILE__,__LINE__))
+      call assertExceptionRaised('', location=SourceLocation(__FILE__,__LINE__))
+
+   end subroutine test_format_map_illegalPositionToken
+
+
+@test
+   subroutine test_defaultFormat()
+      character(len=:), allocatable :: expected
+      character(len=:), allocatable :: found
+
+      found = formatString('%*', make_arg_vector(1))
+      expected = '1'
+      @assertEqual(expected, found)
+
+   end subroutine test_defaultFormat
+   
+   ! Use default '*' format when format is not provide
+   ! with keyword
+@test
+   subroutine test_defaultFormat_keyword()
+      character(len=:), allocatable :: expected
+      character(len=:), allocatable :: found
+
+      type (StringUnlimitedMap) :: extra
+
+      call extra%insert('dog',String('fido'))
+      call extra%insert('cat',String('tabby'))
+
+      found = formatString('%(dog) %(cat)', extra)
+      expected = 'fido tabby'
+      @assertEqual(expected, found)
+
+   end subroutine test_defaultFormat_keyword
+   
+
+@test
+   subroutine test_formatArray()
+      use PFL_WrapArray
+      character(len=:), allocatable :: expected
+      character(len=:), allocatable :: found
+
+      integer :: m(5) = [1,2,3,4,5]
+      real :: x(3) = [1.2,2.3,3.4]
+
+      found = formatString('%4(f3.1,1x)', make_arg_vector(wrapArray(x)))
+      expected = '1.2 2.3 3.4'  ! note never has a trailing space
+      @assertEqual(expected, found, whitespace=KEEP_ALL)
+      
+      found = formatString('%10(I3.3:,"\n")', make_arg_vector(wrapArray(m(1:3))))
+      expected = '001' // new_line('a') // '002' // new_line('a') // '003'
+      @assertEqual(expected, found, whitespace=KEEP_ALL)
+
+#ifndef __GFORTRAN__
+      found = formatString('%I2.2', make_arg_vector(wrapArray(m)))
+      expected = '01' // new_line('a') // '02' // new_line('a') // '03' // new_line('a') // '04' // new_line('a') // '05'
+      @assertEqual(expected, found, whitespace=KEEP_ALL)
+#endif
+   end subroutine test_formatArray
+
+#ifndef __GFORTRAN__
+   @test(ifndef=__GFORTRAN__)
+   subroutine test_formatArray2d()
+      use PFL_WrapArray
+      character(len=:), allocatable :: expected
+      character(len=:), allocatable :: found
+
+      real :: arr(2,2)
+
+      arr = reshape([1.2,2.3,3.4,4.5], [2,2])
+
+      found = formatString('%4(f3.1,:,1x)', make_arg_vector(wrapArray(arr)))
+      expected = '1.2 2.3 3.4 4.5'
+      @assertEqual(expected, found, whitespace=KEEP_ALL)
+
+   end subroutine test_formatArray2d
+
+
+@test(ifndef=__GFORTRAN__)
+   subroutine test_formatArray3d()
+      use PFL_WrapArray
+      character(len=:), allocatable :: expected
+      character(len=:), allocatable :: found
+
+      integer, allocatable :: arr(:,:,:)
+      integer :: i
+
+      arr = reshape([(i,i=1,6)],[2,1,3])
+
+      found = formatString('%10(3i3:,"\n")', make_arg_vector(wrapArray(arr)))
+      expected = '  1  2  3' // new_line('a') // '  4  5  6'
+      @assertEqual(expected, found, whitespace=KEEP_ALL)
+
+   end subroutine test_formatArray3d
+
+
+@test(ifndef=__GFORTRAN__)
+   subroutine test_formatArray4d()
+      use PFL_WrapArray
+      character(len=:), allocatable :: expected
+      character(len=:), allocatable :: found
+
+      integer, allocatable :: arr(:,:,:,:)
+      integer :: i
+
+      arr = reshape([(i,i=1,12)],[2,1,3,2])
+
+      found = formatString('%10(6i3:,"\n")', make_arg_vector(wrapArray(arr)))
+      expected = '  1  2  3  4  5  6' // new_line('a') // &
+           &  '  7  8  9 10 11 12'
+      @assertEqual(expected, found, whitespace=KEEP_ALL)
+
+   end subroutine test_formatArray4d
+
+
+@test(ifndef=__GFORTRAN__)
+   subroutine test_formatArray5d()
+      use PFL_WrapArray
+      character(len=:), allocatable :: expected
+      character(len=:), allocatable :: found
+
+      integer, allocatable :: arr(:,:,:,:,:)
+      integer :: i
+
+      arr = reshape([(i,i=1,12)],[2,1,3,2,1])
+
+      found = formatString('%10(6i3:,"\n")', make_arg_vector(wrapArray(arr)))
+      expected = '  1  2  3  4  5  6' // new_line('a') // &
+           &  '  7  8  9 10 11 12'
+      @assertEqual(expected, found, whitespace=KEEP_ALL)
+
+   end subroutine test_formatArray5d
+#endif
+
+   ! Intentionally provide bad format and check that 
+   ! an appropriate error message is generated.
+@test
+    subroutine test_badFormat()
+      character(len=:), allocatable :: found
+
+      found = formatString('%i2.2-',make_arg_vector(1))
+      @assertExceptionRaised('handleScalar() - bad format "(i2.2-)"')
+
+   end subroutine test_badFormat
+
+@test
+   subroutine test_formatArray_withQuote()
+      use PFL_WrapArray
+      character(len=:), allocatable :: expected
+      character(len=:), allocatable :: found
+
+      integer :: m(5) = [1,2,3,4,5]
+
+      found = formatString('%5(i1.1,:,"-")', make_arg_vector(wrapArray(m)))
+      expected = '1-2-3-4-5'
+      @assertEqual(expected, found, whitespace=KEEP_ALL)
+      
+   end subroutine test_formatArray_withQuote
+
+
+@test
+   subroutine test_newline_noargs()
+      type (UnlimitedVector) :: v
+      character(:), allocatable :: found
+
+      found = formatString('\n', v)
+      @assertEqual(new_line('A'), found)
+
+   end subroutine test_newline_noargs
+
+   ! The following test was from a use case that was breaking because
+   ! of a hardwired record size in gfortran.  Unfortunately, all that
+   ! could be done was to increase the size of the buffer.
+   ! Need to file a bug report regarding dynamic buffer size to GCC.
+@test
+   subroutine test_long_string()
+      use PFL_Logger
+      use PFL_SeverityLevels
+      use MockHandler_mod
+      character(:), allocatable :: fields
+      type(Logger) :: lgr
+
+      type(MockHandler), target :: null_handler
+      type(MockBuffer), target :: buffer
+
+      null_handler = MockHandler(buffer)
+
+      lgr = Logger('A', INFO)
+      
+      fields = 'fields: PHIS SGH VARFLT TROPPV TROPPT TROPPB TROPT TROPQ QVFILL OXFILL TA QA US VS PS SPEED PBLH TS QS THAT QHAT CU2DRAINMOVE CU2DSNOWMOVE RAS_TIME RASPBLQ CNPRCP LSPRCP ANPRCP LSORIG CNORIG SNO PLS PCU LWP CCWP TAUTT TAULO TAUMD TAUHI CLDTT CLDLO CLDMD CLDHI SPLAND SPWATR RUNOFF BASEFLOW EMIS CT CQ CN CM RISFC LAI GRN SNOMAS VEGTYPE WET1 WET2 WET3 TSOIL1 TSOIL2 FRLAND FRLANDICE FRLAKE FRSEAICE FROCEAN USTAR Z0 Z0H LHFX SHFX EVAP TAUX TAUY RHOS U2M V2M T2M Q2M U10N V10N U10M V10M T10M Q10M U50M V50M GUST VENT ASNOW RADSRF FLNS FLNSC FLNSCNA OLR OLRC OLRCC5 OLRCNA LWS LWSC LWSCC5 LWSCNA SFCEM SWCLDTMP SWCLDPRS OSR OSRCLR SWTNET SWTNETC SWTNETCNA SWTNETNA RADSWT SWGDWN SWGDWNC SWGNET SWGNETC SWGNETNA SWGNETCNA ALBEDO ALBVR ALBVF ALBNR ALBNF EVLAND LHLAND SHLAND SWLAND LWLAND GHLAND SMLAND TWLAND TELAND EVAPOUT COSZ DCOOL DWARM DELT_COOL BULK_SST TDEL BCOOL LCOOL TBAR USTARW SWCOOL QCOOL DELTS QWARM SWWARM LANGM PHIW TAUTW ZETA_W'
+
+      call lgr%add_handler(null_handler)
+      call lgr%info('      Fields: ' // fields)
+
+   end subroutine test_long_string
+   
+end module Test_FormatString
+

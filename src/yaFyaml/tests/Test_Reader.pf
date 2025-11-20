@@ -1,0 +1,65 @@
+module Test_Reader
+  use, intrinsic :: iso_c_binding, only: NL => C_NEW_LINE
+  use, intrinsic :: iso_c_binding, only: C_NULL_CHAR
+  use funit
+  use fy_Reader
+  use fy_TextStream
+  use fy_EscapedTextStream
+  implicit none
+
+contains
+
+  @test
+  subroutine test_peek()
+
+    type(TextStream) :: stream
+    type(Reader) ::r
+    
+    stream = TextStream('1234567890'//NL//'abcdefghij')
+    r = Reader(stream)
+
+#ifdef __GFORTRAN__
+    @assertEqual('1',r%peek(offset=0))
+    @assertEqual('1',r%peek(offset=0))
+    @assertEqual('4',r%peek(offset=3))
+    @assertEqual('1',r%peek(offset=0))
+#else
+    @assert_that(r%peek(offset=0), is(equal_to('1')))
+    @assert_that(r%peek(offset=0), is(equal_to('1')))
+    @assert_that(r%peek(offset=3), is(equal_to('4')))
+    @assert_that(r%peek(offset=0), is(equal_to('1')))
+#endif
+
+  end subroutine test_peek
+
+  ! Check that forward() advances one character and
+  ! eventually puts C_NULL_CHAR at the end.
+  @test
+  subroutine test_forward()
+
+    type(TextStream) :: stream
+    type(Reader) ::r
+    
+    stream = TextStream('ab')
+    r = Reader(stream)
+
+#ifdef __GFORTRAN__
+    @assertEqual('a', r%peek())
+#else
+    @assert_that(r%peek(), is(equal_to('a')))
+#endif
+    call r%forward(offset=1)
+#ifdef __GFORTRAN__
+    @assertEqual('b', r%peek())
+#else
+    @assert_that(r%peek(), is(equal_to('b')))
+#endif
+    call r%forward(offset=1)
+#ifdef __GFORTRAN__
+    @assertEqual(C_NULL_CHAR, r%peek())
+#else
+    @assert_that(r%peek(), is(equal_to(C_NULL_CHAR)))
+#endif
+  end subroutine test_forward
+    
+end module Test_Reader

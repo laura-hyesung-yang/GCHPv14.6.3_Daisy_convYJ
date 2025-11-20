@@ -1,0 +1,9 @@
+module gFTL2_Logical@Container@
+
+#define T __LOGICAL
+#define @Container@ Logical@Container@
+#include "@container@/template.inc"
+#undef @Container@
+#undef T
+  
+end module gFTL2_Logical@Container@

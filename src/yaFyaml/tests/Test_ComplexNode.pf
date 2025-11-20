@@ -1,0 +1,113 @@
+! This test suite was created to try to flush potential
+! compiler bugs in multiple compilers when switching to
+! Configurations based upon YAML_Node.
+
+! Possibly there are still bugs in yafyaml or gFTL containers, but
+! currently it appears that this just stresses compilers.  Sigh.
+
+module Test_ComplexNode
+   use funit
+   use fy_Nodes
+   use fy_ErrorCodes
+   use, intrinsic :: iso_fortran_env, only: INT32, INT64
+   use, intrinsic :: iso_fortran_env, only: REAL32, REAL64
+   implicit none
+
+contains
+
+  @test
+   subroutine test_deepcopy_1()
+      class(YAML_Node), target, allocatable :: a, b
+      type(Mapping), pointer :: m
+      type(IntNode) :: inode
+      type(StringNode) :: snode
+      
+      allocate(a, source=MappingNode())
+      m => to_mapping(a)
+      inode = IntNode(1)
+      snode = StringNode('cat')
+      call m%insert(snode, inode)
+
+      b = a
+
+      m => to_mapping(b)
+
+      @assert_that(m%size(), is(1_INT64))
+
+   end subroutine test_deepcopy_1
+
+   @test
+   subroutine test_deepcopy_2()
+      class(YAML_Node), target, allocatable :: a, b, c
+      type(Mapping), pointer :: ma, mb, mc
+      type(MappingNode) :: mn
+      
+      allocate(a,source = MappingNode())
+      ma => to_mapping(a)
+      call ma%insert(StringNode('cat'), IntNode(1))
+
+      allocate(b, source=MappingNode())
+      mb => to_mapping(b)
+      call ma%insert(IntNode(2), IntNode(1))
+      call mb%insert(IntNode(2), a)
+
+      
+      c = a
+      mc => to_mapping(c)
+      @assert_that(mc%size(), is(2_INT64))
+
+      call mb%clear()
+
+   end subroutine test_deepcopy_2
+
+   @test
+   subroutine test_deepcopy_3()
+      class(YAML_Node), target, allocatable :: a, b
+      type(Mapping), pointer :: m
+      class(YAML_Node), allocatable :: key
+      
+      allocate(a, source = MappingNode())
+      m => to_mapping(a)
+
+      key = StringNode('mapping')
+      call m%insert(key, MappingNode())
+
+      @assert_that(m%size(), is(1_INT64))
+      
+   end subroutine test_deepcopy_3
+
+
+   @test
+   subroutine test_copy_pair()
+      type(MappingPair) :: p1, p2
+
+      class(YAML_Node), allocatable :: k, v
+      k = StringNode('dog')
+      v = IntNode(3)
+      p2 = MappingPair(k,v)
+
+      p1 = p2
+   end subroutine test_copy_pair
+
+   ! Failing case from pFlogger with ifort 2021.5.0
+   @test
+   subroutine test_pflogger_reproducer4()
+      use fy_Parser
+      use fy_EscapedTextStream
+      class(YAML_Node), target, allocatable :: node
+      type(Mapping), pointer :: m
+      class(NodeIterator), allocatable :: b, e
+      type(Parser) :: p
+
+      p = Parser()
+      node = p%load(EscapedTextStream( &
+           & " B: {A: 3} \n A: 5"))
+
+      ! Note: GFortran needs the extra parens around (b /= e)
+      associate (b => node%begin(), e => node%end())
+        @assert_that((b /= e), is(true()))
+      end associate
+
+   end subroutine test_pflogger_reproducer4
+
+end module Test_ComplexNode
