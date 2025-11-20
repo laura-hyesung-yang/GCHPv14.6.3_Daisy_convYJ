@@ -1370,6 +1370,24 @@ CONTAINS
 
     ENDIF
     
+#ifdef LUO_WETDEP
+    IF(p_T<237.D0 .AND. State_Met%CLDF(I,J,L)>1.D-6)THEN
+
+      YCLDICE = State_Met%QI(I,J,L)*State_Met%AIRDEN(I,J,L)*1.0D3
+      IF(YCLDICE>1.D-20)THEN
+
+        FICE=State_Met%CLDF(I,J,L)*YCLDICE/&
+        (YCLDICE+State_Met%QL(I,J,L)*State_Met%AIRDEN(I,J,L)*1.0D3)
+
+        IF(FICE>1.D-6)THEN
+
+          IF(SpcInfo%WD_RainoutEff(3)>0.6D0)THEN
+            RAINFRAC = RAINFRAC*(1.D0-EXP(-MIN(100.D0,DT*State_Met%TKICE(I,J,L))))
+          ENDIF
+        ENDIF
+      ENDIF
+    ENDIF
+    
     ! Free pointer
     p_pHCloud => NULL()
 #else
@@ -1933,12 +1951,17 @@ CONTAINS
 
        ! Compute washout fraction
 #ifdef LUO_WETDEP
+       IF(TK>258.D0)THEN
        ! Luo et al scheme: Compute washout fraction.  If the efficiency
        ! for T > 258 K is less than .999, treat it as hydrophobic aerosol
        IF ( SpcInfo%WD_RainoutEff(3) < 0.999_fp ) THEN
           WASHFRAC = WASHFRAC_FINE_AEROSOLLUOPO( DT, F, PP, TK )
        ELSE
           WASHFRAC = WASHFRAC_FINE_AEROSOLLUOPI( DT, F, PP, TK )
+       ENDIF
+
+       ELSE
+          WASHFRAC = WASHFRAC_FINE_AEROSOLLUOPO( DT, F, PP, TK )
        ENDIF
 #else
        ! Default scheme: Compute washout fraction, but always
@@ -1955,6 +1978,22 @@ CONTAINS
     IF(.not.KIN)THEN
       KIN      = .TRUE.
       WASHFRAC = F*WASHFRAC
+    ENDIF
+    ENDIF
+
+    IF(WASHFRAC>0.D0)THEN
+      IF(KIN)THEN
+        WASHRATE = WASHFRAC/DT/F
+
+        WASHFRAC = WASHFRAC*(State_Met%KINC(I,J,L)/ &
+                  (State_Met%KINC(I,J,L)+ &
+                  (1.D0-F)*WASHRATE))
+      ELSE
+        WASHRATE = WASHFRAC/DT
+
+        WASHFRAC = WASHFRAC*(State_Met%KINC(I,J,L)/ &
+                  (State_Met%KINC(I,J,L)+ &
+                  (1.D0-F)*WASHRATE))
     ENDIF
     ENDIF
 #endif
@@ -4548,8 +4587,13 @@ CONTAINS
 
           ! Define ALPHA, the fraction of the raindrops that
           ! re-evaporate when falling from (I,J,L+1) to (I,J,L)
+#ifdef LUO_WETDEP
+          ALPHA = ( ABS( Q ) * State_Met%BXHEIGHT(I,J,L) * 100e+0_fp )       &
+                  / MAX( 1.D-30, PDOWN(L+1,I,J) )
+#else
           ALPHA = ( ABS( Q ) * State_Met%BXHEIGHT(I,J,L) * 100e+0_fp )       &
                   / ( PDOWN(L+1,I,J) )
+#endif
 
           ! Restrict ALPHA to be less than 1 (>1 is unphysical)
           ! (hma, 24-Dec-2010)
